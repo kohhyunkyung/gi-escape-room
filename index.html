@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>GI Escape Room</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Segoe UI',sans-serif;}
+canvas{display:block;width:100vw;height:100vh;}
+#ui{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;color:#fff;}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,0.8);}
+#crosshair::before{width:2px;height:20px;left:9px;top:0;}
+#crosshair::after{width:20px;height:2px;left:0;top:9px;}
+#hud{position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.9;pointer-events:auto;}
+#hud .htitle{font-size:15px;font-weight:600;color:#e0c97f;margin-bottom:4px;}
+#room-ind{font-size:12px;color:#aaa;margin-bottom:2px;}
+#gi-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-left:6px;vertical-align:middle;}
+.gi-on{background:#2a7a3a;color:#7fffaa;}.gi-off{background:#5a2a2a;color:#ffaaaa;}
+#hint{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 20px;font-size:14px;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
+#msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(5,3,12,0.93);border:1px solid rgba(255,200,50,0.4);border-radius:14px;padding:30px 40px;text-align:center;display:none;max-width:420px;line-height:1.7;pointer-events:auto;}
+#msg h2{color:#e0c97f;margin-bottom:10px;font-size:22px;}
+#msg p{white-space:pre-line;}
+.btn{margin:8px 5px 0;padding:10px 24px;border:none;border-radius:8px;background:#e0c97f;color:#1a1200;font-size:14px;font-weight:700;cursor:pointer;pointer-events:auto;}
+.btn-sec{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);}
+#inventory{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;}
+#inventory{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+.slot{width:60px;height:68px;border:2px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(0,0,0,0.55);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px;gap:3px;backdrop-filter:blur(4px);}
+.slot.on{border-color:#e0c97f;background:rgba(224,201,127,0.15);box-shadow:0 0 10px rgba(224,201,127,0.2);}
+.slot-label{font-size:9px;color:rgba(255,255,255,0.5);text-align:center;line-height:1.2;max-width:56px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.slot.on .slot-label{color:#e0c97f;}
+#gi-info{position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px 18px;font-size:12px;line-height:1.8;max-width:210px;color:rgba(255,255,255,0.75);}
+#gi-info .gt{font-size:13px;font-weight:600;color:#a0d0ff;margin-bottom:5px;}
+#pviz{width:100%;height:5px;border-radius:3px;background:rgba(255,255,255,0.1);margin-top:4px;overflow:hidden;}
+#pfill{height:100%;border-radius:3px;background:#4a9eff;width:0%;transition:width 0.3s;}
+#code-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(5,3,15,0.95);border:1px solid rgba(100,160,255,0.4);border-radius:14px;padding:28px 36px;text-align:center;display:none;pointer-events:auto;min-width:300px;}
+#code-panel h3{color:#a0d0ff;margin-bottom:14px;font-size:18px;}
+#code-disp{font-size:32px;letter-spacing:10px;color:#fff;background:rgba(255,255,255,0.07);border-radius:8px;padding:12px 20px;margin-bottom:12px;font-family:monospace;min-height:60px;}
+.num-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.nb{padding:12px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.06);color:#fff;font-size:18px;cursor:pointer;pointer-events:auto;}
+.nb:hover{background:rgba(255,255,255,0.15);}
+#code-fb{font-size:13px;min-height:20px;margin-bottom:8px;}
+#note-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(28,20,8,0.97);border:1px solid rgba(200,160,80,0.4);border-radius:10px;padding:28px 36px;display:none;pointer-events:auto;max-width:360px;}
+#note-panel h3{color:#d4a84b;margin-bottom:12px;font-size:17px;}
+#note-panel p{color:#ddd;font-size:14px;line-height:1.8;white-space:pre-line;}
+.pclose{position:absolute;top:12px;right:16px;cursor:pointer;color:#888;font-size:18px;pointer-events:auto;background:none;border:none;}
+#minimap{position:absolute;bottom:20px;right:20px;width:160px;height:110px;background:#1a1a2a;border:1px solid rgba(255,255,255,0.2);border-radius:8px;overflow:hidden;}
+#mm{width:160px;height:110px;}
+
+/* 시작 화면 */
+#start{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:auto;background:radial-gradient(ellipse at 50% 60%,#1a0a2e,#000 70%);overflow-y:auto;padding:40px 20px;}
+#start .stag{font-size:11px;letter-spacing:4px;color:#7a6a3a;text-transform:uppercase;margin-bottom:16px;}
+#start h1{font-size:42px;color:#e0c97f;margin-bottom:6px;letter-spacing:3px;font-weight:700;}
+#start .ssub{font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin-bottom:28px;}
+#story{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #7a5a1a;border-radius:8px;padding:18px 24px;margin-bottom:22px;text-align:left;max-width:500px;width:100%;}
+#story .slabel{font-size:10px;letter-spacing:3px;color:#7a6a3a;text-transform:uppercase;margin-bottom:10px;}
+#story p{color:rgba(255,255,255,0.75);font-size:14px;line-height:1.9;}
+#story .sem{color:#e0c97f;}
+#chapters{display:flex;gap:10px;margin-bottom:22px;justify-content:center;flex-wrap:wrap;}
+.ccard{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;text-align:left;width:148px;}
+.ccard .cnum{font-size:10px;color:#7a6a3a;letter-spacing:2px;margin-bottom:4px;}
+.ccard .cname{font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;margin-bottom:4px;}
+.ccard .cdesc{font-size:11px;color:rgba(255,255,255,0.35);line-height:1.5;}
+#ctrl-row{display:flex;gap:16px;margin-bottom:28px;justify-content:center;flex-wrap:wrap;}
+.ckey{display:inline-block;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 8px;font-size:11px;color:rgba(255,255,255,0.7);margin-right:4px;font-family:monospace;}
+.citem{font-size:12px;color:rgba(255,255,255,0.45);}
+#start-btn{padding:14px 52px;background:#e0c97f;color:#1a1200;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:1px;}
+#start-btn:hover{background:#f0d98f;}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="ui">
+  <div id="crosshair"></div>
+  <div id="hud">
+    <div class="htitle">🔦 GI Escape Room</div>
+    <div id="room-ind">방 1/3 — 연구실</div>
+    <div>조명 효과 <span id="gi-badge" class="gi-off">꺼짐</span></div>
+    <div style="opacity:0.5;font-size:11px;margin-top:2px;">WASD 이동 · 마우스 시점<br>E 조작하기 · G 조명 ON/OFF</div>
+  </div>
+  <div id="gi-info">
+    <div class="gt">⚡ DDGI 프로브</div>
+    <div>격자: 4x3x4 (48개)</div>
+    <div>SH: L1 · 4계수xRGB</div>
+    <div id="pstat">수렴 중...</div>
+    <div id="pviz"><div id="pfill"></div></div>
+    <div style="margin-top:5px;font-size:11px;opacity:0.5;">프레임마다 간접광 누적</div>
+  </div>
+  <div id="hint"></div>
+  <div id="inventory">
+    <div class="slot" id="sl0"><span id="sl0-icon" style="font-size:22px"></span><span class="slot-label" id="sl0-label">빈 슬롯</span></div>
+    <div class="slot" id="sl1"><span id="sl1-icon" style="font-size:22px"></span><span class="slot-label" id="sl1-label">빈 슬롯</span></div>
+    <div class="slot" id="sl2"><span id="sl2-icon" style="font-size:22px"></span><span class="slot-label" id="sl2-label">빈 슬롯</span></div>
+    <div class="slot" id="sl3"><span id="sl3-icon" style="font-size:22px"></span><span class="slot-label" id="sl3-label">빈 슬롯</span></div>
+  </div>
+  <div id="minimap"><canvas id="mm" width="160" height="110"></canvas></div>
+  <div id="msg"><h2 id="msg-t"></h2><p id="msg-b"></p><div id="msg-btns"></div></div>
+  <div id="code-panel">
+    <button class="pclose" onclick="closeCode()">x</button>
+    <h3 id="code-t">암호 입력</h3>
+    <div id="code-disp"></div>
+    <div id="code-fb"></div>
+    <div class="num-grid">
+      <button class="nb" onclick="pn('1')">1</button><button class="nb" onclick="pn('2')">2</button><button class="nb" onclick="pn('3')">3</button>
+      <button class="nb" onclick="pn('4')">4</button><button class="nb" onclick="pn('5')">5</button><button class="nb" onclick="pn('6')">6</button>
+      <button class="nb" onclick="pn('7')">7</button><button class="nb" onclick="pn('8')">8</button><button class="nb" onclick="pn('9')">9</button>
+      <button class="nb" onclick="pn('C')" style="color:#f88">C</button><button class="nb" onclick="pn('0')">0</button><button class="nb" onclick="pn('OK')" style="color:#8f8">OK</button>
+    </div>
+  </div>
+  <div id="note-panel">
+    <button class="pclose" onclick="closeNote()">x</button>
+    <h3 id="note-t"></h3><p id="note-b"></p>
+  </div>
+</div>
+
+<!-- 시작 화면 -->
+<div id="fade" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#000;opacity:0;pointer-events:none;z-index:99;transition:opacity 0.5s ease;"></div>
+<div id="end-screen" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;background:#000;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:auto;">
+  <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 40%,#0a1a0a,#000 70%);"></div>
+  <div style="position:relative;z-index:1;max-width:560px;padding:0 24px;">
+    <div style="font-size:11px;letter-spacing:5px;color:#4a8a4a;text-transform:uppercase;margin-bottom:20px;">MISSION COMPLETE</div>
+    <div style="font-size:56px;color:#e0c97f;font-weight:700;letter-spacing:2px;margin-bottom:8px;text-shadow:0 0 40px rgba(224,201,127,0.4);">탈출 성공</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.3);letter-spacing:3px;margin-bottom:36px;">GI ESCAPE ROOM CLEARED</div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #4a8a4a;border-radius:8px;padding:20px 28px;margin-bottom:28px;text-align:left;">
+      <div style="font-size:10px;letter-spacing:3px;color:#4a7a4a;text-transform:uppercase;margin-bottom:12px;">임무 보고서</div>
+      <div style="color:rgba(255,255,255,0.75);font-size:14px;line-height:2;">
+        ✓ &nbsp;연구실 보안 금고 해제<br>
+        ✓ &nbsp;지하실 발전기 복구<br>
+        ✓ &nbsp;보안실 봉쇄 코드 해제<br>
+        ✓ &nbsp;GI 연구소 탈출 완료
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:16px 24px;margin-bottom:32px;font-size:13px;color:rgba(255,255,255,0.5);line-height:1.9;">
+      DDGI 전역 조명 기술이 각 방의<br>
+      간접광 · 색 번짐 · 숨겨진 단서를<br>
+      실시간으로 표현했습니다.
+    </div>
+    <button onclick="location.reload()" style="padding:14px 52px;background:#e0c97f;color:#1a1200;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:1px;">다시 시작</button>
+  </div>
+</div>
+<div id="start">
+  <div class="stag">Global Illumination · 2045</div>
+  <h1>GI Escape Room</h1>
+  <div class="ssub">DYNAMIC DIFFUSE GLOBAL ILLUMINATION</div>
+  <div id="story">
+    <div class="slabel">긴급 상황 보고</div>
+    <p>당신은 <span class="sem">GI 연구소</span>의 수석 연구원입니다.<br>
+    오늘 새벽, 정체불명의 해킹으로 인해<br>
+    연구소 전체가 <span class="sem">보안 봉쇄</span>에 들어갔습니다.<br><br>
+    단서는 각 방 곳곳에 숨겨져 있습니다.<br>
+    <span class="sem">3개의 구역</span>을 통과해 탈출하십시오.</p>
+  </div>
+  <div id="chapters">
+    <div class="ccard"><div class="cnum">CH 01</div><div class="cname">연구실</div><div class="cdesc">실험 기록으로 금고를 열어라</div></div>
+    <div class="ccard"><div class="cnum">CH 02</div><div class="cname">지하실</div><div class="cdesc">전력을 복구하고 탈출로 확보</div></div>
+    <div class="ccard"><div class="cnum">CH 03</div><div class="cname">보안실</div><div class="cdesc">봉쇄 코드를 해제하고 탈출</div></div>
+  </div>
+  <div id="ctrl-row">
+    <span class="citem"><span class="ckey">WASD</span>이동</span>
+    <span class="citem"><span class="ckey">마우스</span>시점</span>
+    <span class="citem"><span class="ckey">E</span>조작하기</span>
+    <span class="citem"><span class="ckey">G</span>조명 ON/OFF</span>
+  </div>
+  <button id="start-btn" onclick="startGame()">탈출 시작</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══ DDGI ═══
+class DDGI {
+  constructor(ox,oy,oz,sw,sh,sd,rx,ry,rz){
+    this.o=new THREE.Vector3(ox,oy,oz);
+    this.s=new THREE.Vector3(sw,sh,sd);
+    this.res=[rx,ry,rz];
+    this.frame=0; this.conv=0;
+    const t=rx*ry*rz;
+    this.probes=Array.from({length:t},(_,i)=>({sh:new Array(12).fill(0),pos:this.ip(i)}));
+  }
+  ip(i){
+    const[rx,ry,rz]=this.res;
+    const iz=Math.floor(i/(rx*ry)),iy=Math.floor((i%(rx*ry))/rx),ix=i%rx;
+    return new THREE.Vector3(
+      this.o.x+(rx>1?ix/(rx-1):0.5)*this.s.x,
+      this.o.y+(ry>1?iy/(ry-1):0.5)*this.s.y,
+      this.o.z+(rz>1?iz/(rz-1):0.5)*this.s.z);
+  }
+  proj(d,c){return[.282095*c.r,.488603*d.y*c.r,.488603*d.z*c.r,.488603*d.x*c.r,.282095*c.g,.488603*d.y*c.g,.488603*d.z*c.g,.488603*d.x*c.g,.282095*c.b,.488603*d.y*c.b,.488603*d.z*c.b,.488603*d.x*c.b];}
+  eval(sh,n){const c0=.886227,c1=1.023328;return new THREE.Color(Math.max(0,c0*sh[0]+c1*(sh[1]*n.y+sh[2]*n.z+sh[3]*n.x)),Math.max(0,c0*sh[4]+c1*(sh[5]*n.y+sh[6]*n.z+sh[7]*n.x)),Math.max(0,c0*sh[8]+c1*(sh[9]*n.y+sh[10]*n.z+sh[11]*n.x)));}
+  sample(pos,n){
+    const[rx,ry,rz]=this.res;
+    const lp=new THREE.Vector3((pos.x-this.o.x)/this.s.x*(rx-1),(pos.y-this.o.y)/this.s.y*(ry-1),(pos.z-this.o.z)/this.s.z*(rz-1));
+    const x0=Math.max(0,Math.min(rx-2,Math.floor(lp.x))),y0=Math.max(0,Math.min(ry-2,Math.floor(lp.y))),z0=Math.max(0,Math.min(rz-2,Math.floor(lp.z)));
+    const tx=lp.x-x0,ty=lp.y-y0,tz=lp.z-z0;
+    const r=new THREE.Color(0,0,0);
+    for(let dz=0;dz<=1;dz++)for(let dy=0;dy<=1;dy++)for(let dx=0;dx<=1;dx++){
+      const idx=(z0+dz)*rx*ry+(y0+dy)*rx+(x0+dx);
+      if(idx>=this.probes.length)continue;
+      const w=(dx?tx:1-tx)*(dy?ty:1-ty)*(dz?tz:1-tz),c=this.eval(this.probes[idx].sh,n);
+      r.r+=c.r*w;r.g+=c.g*w;r.b+=c.b*w;
+    }
+    return r;
+  }
+  update(lights,walls){
+    this.frame++;
+    const pf=Math.ceil(this.probes.length/8),st=(this.frame*pf)%this.probes.length;
+    const N=16,gr=(1+Math.sqrt(5))/2;
+    for(let i=st;i<Math.min(st+pf,this.probes.length);i++){
+      const p=this.probes[i],ns=new Array(12).fill(0);
+      for(let s=0;s<N;s++){
+        const th=Math.acos(1-2*(s+.5)/N),ph=2*Math.PI*s/gr;
+        const d=new THREE.Vector3(Math.sin(th)*Math.cos(ph),Math.cos(th),Math.sin(th)*Math.sin(ph));
+        const rad=new THREE.Color(.015,.01,.02);
+        for(const l of lights){const td=new THREE.Vector3().subVectors(l.pos,p.pos).normalize(),dist=p.pos.distanceTo(l.pos),a=l.int/(1+.25*dist+.04*dist*dist),ndl=Math.max(0,d.dot(td));rad.r+=l.col.r*ndl*a;rad.g+=l.col.g*ndl*a;rad.b+=l.col.b*ndl*a;}
+        for(const w of walls){const al=Math.max(0,d.dot(w.n))*w.int*.2;rad.r+=w.col.r*al;rad.g+=w.col.g*al;rad.b+=w.col.b*al;}
+        const c=this.proj(d,rad);for(let k=0;k<12;k++)ns[k]+=c[k]*(4*Math.PI/N);
+      }
+      const al=.09;for(let k=0;k<12;k++)p.sh[k]=p.sh[k]*(1-al)+ns[k]*al;
+    }
+    this.conv=Math.min(100,this.conv+1.8);
+    document.getElementById('pfill').style.width=this.conv+'%';
+    document.getElementById('pstat').textContent=this.conv>=99?'완료':'수렴 중... '+Math.floor(this.conv)+'%';
+  }
+}
+
+// ═══ Three.js 초기화 ═══
+const cv=document.getElementById('cv');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,100);
+
+// ═══ 게임 상태 ═══
+const G={room:-1,gi:false,started:false,inv:[]};
+
+// ═══ 헬퍼 ═══
+const sm=(c,r=.85,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+function mkBox(w,h,d,mat,x,y,z,cast,recv){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  mesh.position.set(x,y,z);
+  if(cast)mesh.castShadow=true;
+  if(recv)mesh.receiveShadow=true;
+  return mesh;
+}
+function mkWalls(grp,W,H,D,fc,cc,bk,lc,rc,fn){
+  const add=(geo,mat,x,y,z,rx,ry)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);if(rx)m.rotation.x=rx;if(ry)m.rotation.y=ry;m.receiveShadow=true;grp.add(m);return m;};
+  add(new THREE.PlaneGeometry(W,D),sm(fc,.9),0,0,0,-Math.PI/2);
+  add(new THREE.PlaneGeometry(W,D),sm(cc,.9),0,H,0,Math.PI/2);
+  add(new THREE.PlaneGeometry(W,H),sm(bk,.85),0,H/2,-D/2);
+  add(new THREE.PlaneGeometry(W,H),sm(fn,.85),0,H/2,D/2,0,Math.PI);
+  add(new THREE.PlaneGeometry(D,H),sm(lc,.85),-W/2,H/2,0,0,Math.PI/2);
+  add(new THREE.PlaneGeometry(D,H),sm(rc,.85),W/2,H/2,0,0,-Math.PI/2);
+}
+function mkPL(grp,x,y,z,col,int,range,shadow){
+  const l=new THREE.PointLight(col,int,range);l.position.set(x,y,z);
+  if(shadow){l.castShadow=true;l.shadow.mapSize.set(1024,1024);l.shadow.radius=3;}
+  grp.add(l);return l;
+}
+function mkDoor(grp,x,y,z,data){
+  const d=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.4,.12),sm(0x2a1a08,.6));
+  d.position.set(x,y,z);d.castShadow=true;Object.assign(d.userData,data);grp.add(d);return d;
+}
+function mkFrame(grp,x,z){
+  const f=sm(0x5a3a1a,.7);
+  [[1.5,.12,.09,x,2.55,z],[.1,2.6,.09,x-.7,1.2,z],[.1,2.6,.09,x+.7,1.2,z]].forEach(([w,h,d,px,py,pz])=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),f);m.position.set(px,py,pz);grp.add(m);
+  });
+}
+
+// ═══ 방 0: 연구실 ═══
+function buildR0(){
+  const grp=new THREE.Group();const IA=[];
+  mkWalls(grp,10,4,12,0x8a7060,0xc0b090,0xcc2222,0x228833,0x224488,0x707070);
+  // 책상
+  const dm=sm(0x5c3a1e,.8);
+  grp.add(mkBox(2.2,.08,1.1,dm,-2,.75,-3,true,true));
+  [[-2.95,-2.6],[-1.05,-2.6],[-2.95,-3.5],[-1.05,-3.5]].forEach(([x,z])=>grp.add(mkBox(.08,.75,.08,dm,x,.375,z,true)));
+  // 노트 - Canvas 텍스처로 줄 그어진 종이처럼
+  const noteCvs=document.createElement('canvas');noteCvs.width=512;noteCvs.height=640;
+  const nctx=noteCvs.getContext('2d');
+  nctx.fillStyle='#f5edc0';nctx.fillRect(0,0,512,640);
+  // 왼쪽 빨간 세로줄
+  nctx.strokeStyle='#ee9999';nctx.lineWidth=3;
+  nctx.beginPath();nctx.moveTo(80,0);nctx.lineTo(80,640);nctx.stroke();
+  // 가로 줄
+  nctx.strokeStyle='#aaccee';nctx.lineWidth=1.5;
+  for(let y=70;y<640;y+=56){nctx.beginPath();nctx.moveTo(0,y);nctx.lineTo(512,y);nctx.stroke();}
+  // 제목
+  nctx.fillStyle='#000000';nctx.strokeStyle='#000000';nctx.lineWidth=3;nctx.lineCap='round';
+  // 제목 줄 (굵게)
+  [[90,52,280,52],[90,64,240,64]].forEach(([x1,y1,x2,y2])=>{
+    nctx.beginPath();nctx.moveTo(x1,y1);nctx.lineTo(x2,y2);nctx.stroke();
+  });
+  nctx.lineWidth=2;
+  // 본문 낙서 선들 (길이 다양하게)
+  const scribbles=[
+    [90,112,420,112],[90,168,380,168],[90,168+10,340,168+10],
+    [90,224,400,224],[90,224+10,300,224+10],
+    [90,336,390,336],[90,336+10,360,336+10],
+    [90,392,410,392],
+    [90,448,350,448],[90,448+10,320,448+10],
+    [90,504,380,504],
+    [90,560,300,560],[90,560+10,330,560+10],
+  ];
+  scribbles.forEach(([x1,y1,x2,y2])=>{
+    nctx.beginPath();
+    // 살짝 물결치게
+    nctx.moveTo(x1,y1);
+    const mid=(x1+x2)/2;
+    nctx.quadraticCurveTo(mid,y1-4,x2,y2);
+    nctx.stroke();
+  });
+  const noteTex=new THREE.CanvasTexture(noteCvs);
+  const noteMesh=new THREE.Mesh(
+    new THREE.PlaneGeometry(.5,.62),
+    new THREE.MeshStandardMaterial({map:noteTex,roughness:.9})
+  );
+  noteMesh.position.set(-1.5,.815,-2.8);noteMesh.rotation.x=-Math.PI/2;
+  noteMesh.userData={type:'note',name:'연구 노트',title:'연구 노트',body:'[GI 조명 실험 기록]\n\n주의사항:\n전역 조명(GI)이 꺼진 상태에서는\n실험실 벽면의 반사 데이터를\n육안으로 확인할 수 없음.\n\n반드시 GI를 활성화한 후\n빨간 벽을 자세히 살펴볼 것.\n\n"빛이 있어야 진실이 보인다."'};
+  grp.add(noteMesh);IA.push(noteMesh);
+  // 금고 - 위치: 오른쪽 벽 근처 잘 보이는 곳 (x=2.5, z=-2)
+  const safeColor=sm(0x3a3a4a,.4,.5);
+  grp.add(mkBox(.7,.02,.5,safeColor, 2.5, .0,-2,true,true)); // 바닥
+  grp.add(mkBox(.7,.02,.5,safeColor, 2.5, .8,-2));           // 천장
+  grp.add(mkBox(.02,.8,.5,safeColor, 2.15,.4,-2,true));      // 왼벽
+  grp.add(mkBox(.02,.8,.5,safeColor, 2.85,.4,-2,true));      // 오른벽
+  grp.add(mkBox(.7,.8,.02,safeColor, 2.5, .4,-2.25));        // 뒷벽
+  const safe=mkBox(.7,.8,.5,new THREE.MeshBasicMaterial({transparent:true,opacity:0}),2.5,.4,-2);
+  safe.userData={type:'safe',name:'보안 금고',code:'826',done:false};grp.add(safe);IA.push(safe);
+
+  // 금고 문: 왼쪽(2.15)이 경첩, 오른쪽으로 열림
+  const safeDoorPivot=new THREE.Group();
+  safeDoorPivot.position.set(2.15,.4,-1.75);
+  const safeDoorMesh=new THREE.Mesh(new THREE.BoxGeometry(.68,.78,.03),sm(0x252535,.3,.6));
+  safeDoorMesh.position.set(.34,0,0);
+  safeDoorPivot.add(safeDoorMesh);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.08,8),sm(0x999999,.2,.8));
+  sh.rotation.z=Math.PI/2;sh.position.set(.58,0,.04);
+  safeDoorPivot.add(sh);
+  grp.add(safeDoorPivot);
+
+  // 열쇠 - 금고 내부
+  const km=new THREE.MeshStandardMaterial({color:0xffd700,metalness:.95,roughness:.05,emissive:0xffaa00,emissiveIntensity:.5});
+  const kg=new THREE.Group();
+  kg.add(new THREE.Mesh(new THREE.TorusGeometry(.09,.025,8,20),km));
+  kg.add(new THREE.Mesh(new THREE.TorusGeometry(.04,.015,8,12),km));
+  const ks=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.28,8),km);ks.position.set(0,-.19,0);kg.add(ks);
+  const kt1=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.025),km);kt1.position.set(.055,-.27,0);kg.add(kt1);
+  const kt2=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,.025),km);kt2.position.set(.055,-.22,0);kg.add(kt2);
+  kg.position.set(2.5,.4,-2.05);
+  kg.visible=false;
+  const khit=new THREE.Mesh(new THREE.BoxGeometry(.4,.6,.4),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  khit.userData={type:'key',id:'key1',name:'황금 열쇠',collected:false};kg.add(khit);
+  grp.add(kg);IA.push(khit);
+  // GI 퍼즐: GI OFF시 완전히 안 보임, GI ON시에만 숫자 표시
+  function makeGlowTex(char){
+    const c=document.createElement('canvas');c.width=128;c.height=128;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#000';ctx.fillRect(0,0,128,128);
+    ctx.fillStyle='#fff';ctx.font='bold 96px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(char,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  const clueMeshes=[];
+  ['8','2','6'].forEach((char,i)=>{
+    const mat=new THREE.MeshStandardMaterial({
+      color:0x000000, roughness:.9,
+      emissive:new THREE.Color(1, 0.05, 0.05),
+      emissiveMap:makeGlowTex(char),
+      emissiveIntensity:1.8,
+      transparent:true, opacity:1
+    });
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(.7,.7),mat);
+    m.position.set(-2+i*2, 1.9, -5.88);
+    m.visible=false; // 처음엔 안 보임
+    grp.add(m);
+    clueMeshes.push(m);
+  });
+  // ── 연구실 소품 ──
+  // 모니터
+  const monBase=mkBox(.6,.05,.4,sm(0x222222,.5,.5),2.2,.8,-3.5,true,true);grp.add(monBase);
+  const monNeck=mkBox(.06,.3,.06,sm(0x222222,.5,.5),2.2,.98,-3.5,true);grp.add(monNeck);
+  const monScreen=mkBox(.7,.45,.04,sm(0x111111,.3,.2),2.2,1.27,-3.5,true);grp.add(monScreen);
+  // 모니터 화면 (파란빛)
+  const scrGlow=mkBox(.62,.37,.03,new THREE.MeshStandardMaterial({color:0x0033aa,emissive:0x0044ff,emissiveIntensity:.8,roughness:.2}),2.2,1.27,-3.48);grp.add(scrGlow);
+  // 비커
+  const beaker=new THREE.Mesh(new THREE.CylinderGeometry(.06,.05,.2,12),new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:.5,roughness:.1,metalness:.1}));
+  beaker.position.set(-2.5,.87,-2.8);grp.add(beaker);
+  const liquid=new THREE.Mesh(new THREE.CylinderGeometry(.055,.048,.1,12),new THREE.MeshStandardMaterial({color:0x00ff88,emissive:0x00aa44,emissiveIntensity:.4,roughness:.1}));
+  liquid.position.set(-2.5,.82,-2.8);grp.add(liquid);
+  // 화분
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(.1,.08,.15,10),sm(0xcc5533,.8));
+  pot.position.set(3.9,.83,-1,);grp.add(pot);
+  const plant=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8),sm(0x228833,.9));
+  plant.position.set(3.9,.98,-1);grp.add(plant);
+  const stem=mkBox(.02,.15,.02,sm(0x225522,.9),3.9,.88,-1,true);grp.add(stem);
+  // 의자 (책상 앞쪽)
+  const chairSeat=mkBox(.5,.06,.5,sm(0x334455,.7),-2,.55,-2,true,true);grp.add(chairSeat);
+  const chairBack=mkBox(.5,.5,.05,sm(0x334455,.7),-2,.83,-1.75,true);grp.add(chairBack);
+  [[-2.25,.25,-1.75],[-1.75,.25,-1.75],[-1.75,.25,-2.25],[-2.25,.25,-2.25]].forEach(([x,y,z])=>grp.add(mkBox(.04,.5,.04,sm(0x222233,.6),x,y,z,true)));
+  // 커피컵
+  const cup=new THREE.Mesh(new THREE.CylinderGeometry(.04,.035,.09,10),sm(0xffffff,.8));
+  cup.position.set(-1.2,.82,-3);grp.add(cup);
+  const coffee=new THREE.Mesh(new THREE.CylinderGeometry(.038,.038,.01,10),sm(0x3a1a00,.5));
+  coffee.position.set(-1.2,.865,-3);grp.add(coffee);
+  // Cornell Box 스타일 오브젝트들
+  // 큰 나무 상자
+  const cbox1=mkBox(.6,.6,.6,sm(0x8a6030,.85),1.5,.3,-2,true,true);
+  // 상자 테두리
+  [[1.5,.62,-2],[1.5,-.01,-2]].forEach(([x,y,z])=>grp.add(mkBox(.62,.03,.62,sm(0x5a3a10,.8),x,y,z)));
+  [[1.19,.3,-2],[1.81,.3,-2]].forEach(([x,y,z])=>grp.add(mkBox(.03,.62,.62,sm(0x5a3a10,.8),x,y,z)));
+  grp.add(cbox1);
+  // 작은 나무 상자 (큰 상자 위에)
+  const cbox2=mkBox(.4,.4,.4,sm(0x7a5020,.85),1.5,.9,-2,true,true);
+  grp.add(cbox2);
+  // 원통 (Cornell Box 전통 오브젝트)
+  const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.7,20),new THREE.MeshStandardMaterial({color:0xdddddd,roughness:.3,metalness:.6}));
+  cyl.position.set(-1,.35,-1);cyl.castShadow=true;cyl.receiveShadow=true;grp.add(cyl);
+  // 원뿔
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(.2,.5,16),new THREE.MeshStandardMaterial({color:0xcc4444,roughness:.8,metalness:0}));
+  cone.position.set(-1,.95,-1);cone.castShadow=true;grp.add(cone);
+  // 문
+  const door=mkDoor(grp,0,1.2,-5.95,{type:'door',name:'다음 방으로',target:1,locked:true,needsItem:'key1'});
+  mkFrame(grp,0,-5.93);IA.push(door);
+  // 조명
+  const pl=mkPL(grp,0,3.5,0,0xfff8e0,1.8,22,true);
+  mkPL(grp,0,3,-4,0xffeedd,.5,10,false);
+  grp.add(new THREE.AmbientLight(0x111118,1.0));
+  const lights=[{pos:pl.position,col:new THREE.Color(1,.97,.88),int:1.8}];
+  const walls=[
+    {n:new THREE.Vector3(1,0,0), col:new THREE.Color(.13,.53,.2),int:1.2},
+    {n:new THREE.Vector3(-1,0,0),col:new THREE.Color(.13,.27,.53),int:1},
+    {n:new THREE.Vector3(0,0,1), col:new THREE.Color(.8,.13,.13),int:1.1},
+    {n:new THREE.Vector3(0,1,0), col:new THREE.Color(.54,.44,.38),int:.5},
+  ];
+  const gim=[];grp.traverse(c=>{if(c.isMesh&&c.receiveShadow)gim.push(c);});
+  return{grp,IA,lights,walls,gim,spawn:new THREE.Vector3(0,1.7,4.5),
+    ddgi:new DDGI(-4.5,.2,-5.5,9,3.6,10.5,4,3,4),
+    fog:[0x0a0508,.1,25],name:'방 1/3 — 연구실',keyGrp:kg,clueMeshes,safeDoor:safeDoorPivot};
+}
+
+// ═══ 방 1: 지하실 ═══
+function buildR1(){
+  const grp=new THREE.Group();const IA=[];
+  mkWalls(grp,9,3.5,11,0x4a4040,0x555050,0x334455,0x664422,0x664422,0x555050);
+  // 배관
+  grp.add(mkBox(.15,3.5,.15,sm(0x556677,.3,.7),4,-.05,-4));
+  grp.add(mkBox(.15,3.5,.15,sm(0x556677,.3,.7),-4,-.05,-2));
+  grp.add(mkBox(9,.1,.1,sm(0x556677,.3,.7),0,3.4,0));
+  // 작업대 + 퓨즈 (유리 몸통 + 양쪽 금속 단자)
+  grp.add(mkBox(2,.08,.8,sm(0x3a2a1a,.9),2,.9,-2,true,true));
+  const fuseGrp=new THREE.Group();
+  // 유리 몸통 (반투명 노란색)
+  const fuseBody=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.18,10),
+    new THREE.MeshStandardMaterial({color:0xffee88,transparent:true,opacity:.8,roughness:.1,metalness:.1}));
+  fuseGrp.add(fuseBody);
+  // 왼쪽 금속 단자
+  const fuseCap1=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.04,10),
+    new THREE.MeshStandardMaterial({color:0xaaaaaa,metalness:.9,roughness:.1}));
+  fuseCap1.position.y=-.11;fuseGrp.add(fuseCap1);
+  // 오른쪽 금속 단자
+  const fuseCap2=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.04,10),
+    new THREE.MeshStandardMaterial({color:0xaaaaaa,metalness:.9,roughness:.1}));
+  fuseCap2.position.y=.11;fuseGrp.add(fuseCap2);
+  // 내부 필라멘트 느낌
+  const fuseWire=new THREE.Mesh(new THREE.CylinderGeometry(.005,.005,.16,6),
+    new THREE.MeshStandardMaterial({color:0xff8800,emissive:0xff4400,emissiveIntensity:.5}));
+  fuseGrp.add(fuseWire);
+  fuseGrp.position.set(2,.98,-2);fuseGrp.rotation.z=Math.PI/2;
+  fuseGrp.userData={type:'item',id:'fuse',name:'교체용 퓨즈',collected:false};
+  // 히트박스
+  const fuseHit=new THREE.Mesh(new THREE.BoxGeometry(.3,.1,.1),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  fuseHit.userData={type:'item',id:'fuse',name:'교체용 퓨즈',collected:false};
+  fuseGrp.add(fuseHit);
+  grp.add(fuseGrp);
+  const fuse=fuseGrp;
+  IA.push(fuseHit);
+  // 퓨즈 박스 - 전기 배전함 스타일
+  const fbGrp=new THREE.Group();
+  fbGrp.position.set(-3.5,1.8,-4.49);
+  // 박스 본체
+  fbGrp.add(new THREE.Mesh(new THREE.BoxGeometry(.75,.95,.12),sm(0x777788,.3,.4)));
+  // 박스 테두리
+  fbGrp.add(new THREE.Mesh(new THREE.BoxGeometry(.79,.99,.1),sm(0x555566,.4,.5)));
+  // 경고 스티커 (빨간)
+  const warn=new THREE.Mesh(new THREE.BoxGeometry(.3,.1,.01),new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xaa1100,emissiveIntensity:.4}));
+  warn.position.set(0,.35,.07);fbGrp.add(warn);
+  // ⚡ 표시 (노란 삼각형)
+  const tri=new THREE.Mesh(new THREE.ConeGeometry(.07,.1,3),new THREE.MeshStandardMaterial({color:0xffcc00,emissive:0xffaa00,emissiveIntensity:.6}));
+  tri.position.set(0,.35,.08);fbGrp.add(tri);
+  // 퓨즈 슬롯들 (빈칸 - 퓨즈 없음)
+  for(let i=0;i<3;i++){
+    const slot=new THREE.Mesh(new THREE.BoxGeometry(.15,.06,.02),sm(0x222222,.5));
+    slot.position.set(-0.15+i*.15,-.05,.07);fbGrp.add(slot);
+  }
+  // 끊어진 표시등 (빨간 - 고장)
+  const errLight=new THREE.Mesh(new THREE.SphereGeometry(.04,8,8),new THREE.MeshStandardMaterial({color:0xff0000,emissive:0xff0000,emissiveIntensity:1.2}));
+  errLight.position.set(.28,.35,.07);fbGrp.add(errLight);
+  // 투명 히트박스
+  const fbHit=new THREE.Mesh(new THREE.BoxGeometry(.75,.95,.15),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  fbHit.userData={type:'fusebox',name:'퓨즈 박스',done:false};
+  fbGrp.add(fbHit);
+  grp.add(fbGrp);
+  const fb=fbHit;
+  IA.push(fbHit);
+  grp.add(mkBox(.5,.15,.05,sm(0xff4400,.5),-3.5,1.95,-4.43));
+  // 메모 - 오른쪽 벽에 핀으로 꽂힌 종이처럼
+  // 종이 배경 (노란빛 크림색, 눈에 잘 띄게)
+  // 메모 - scribble 종이 텍스처
+  const wnCvs=document.createElement('canvas');wnCvs.width=256;wnCvs.height=320;
+  const wctx=wnCvs.getContext('2d');
+  wctx.fillStyle='#f5e6a0';wctx.fillRect(0,0,256,320);
+  wctx.strokeStyle='#ee9999';wctx.lineWidth=2;
+  wctx.beginPath();wctx.moveTo(38,0);wctx.lineTo(38,320);wctx.stroke();
+  wctx.strokeStyle='#aaccee';wctx.lineWidth=1;
+  for(let y=30;y<320;y+=28){wctx.beginPath();wctx.moveTo(0,y);wctx.lineTo(256,y);wctx.stroke();}
+  wctx.strokeStyle='#000';wctx.lineWidth=2;wctx.lineCap='round';
+  // 제목 굵은 선
+  [[42,20,160,20],[42,30,130,30]].forEach(([x1,y1,x2,y2])=>{wctx.beginPath();wctx.moveTo(x1,y1);wctx.lineTo(x2,y2);wctx.stroke();});
+  wctx.lineWidth=1.5;
+  [[42,58,210,56],[42,86,190,84],[42,114,220,113],[42,142,170,141],[42,170,200,169],[42,198,180,197],[42,226,210,225],[42,254,160,253],[42,282,195,281]].forEach(([x1,y1,x2,y2])=>{
+    wctx.beginPath();const mx=(x1+x2)/2;wctx.moveTo(x1,y1);wctx.quadraticCurveTo(mx,y1-3,x2,y2);wctx.stroke();
+  });
+  const wnTex=new THREE.CanvasTexture(wnCvs);
+  const wnBg=new THREE.Mesh(new THREE.PlaneGeometry(.5,.65),new THREE.MeshStandardMaterial({map:wnTex,roughness:.9}));
+  wnBg.position.set(3.42,1.8,-3);wnBg.rotation.y=-Math.PI/2;grp.add(wnBg);
+  // 핀 (빨간 동그라미)
+  const pin=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),new THREE.MeshStandardMaterial({color:0xff2222,metalness:.5,roughness:.3}));
+  pin.position.set(3.44,2.1,-3); grp.add(pin);
+  // 메모 위 작은 스포트라이트 (눈에 띄게)
+  const noteLight=new THREE.PointLight(0xffffff,.8,3);
+  noteLight.position.set(3.3,2.5,-3); grp.add(noteLight);
+  // 실제 상호작용 오브젝트
+  const wn=mkBox(.5,.65,.04,new THREE.MeshStandardMaterial({color:0xf5e6a0,roughness:.95,transparent:true,opacity:0}),3.42,1.8,-3);
+  wn.rotation.y=-Math.PI/2;
+  wn.userData={type:'note',name:'낡은 메모',title:'낡은 메모',body:'[긴급 수리 지침]\n\n1. 퓨즈 박스 교체 필수\n2. 발전기 가동 코드:\n\n   첫째 = 층수(2)+3\n   둘째 = 층수(2)\n   셋째 = 첫째+2\n   넷째 = 둘째\n\n(4자리 숫자)'};
+  grp.add(wn);IA.push(wn);
+  // ── 지하실 소품 ──
+  // 드럼통
+  const drum=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.6,12),sm(0x445544,.6,.3));
+  drum.position.set(-2,.3,2,);drum.castShadow=true;grp.add(drum);
+  const drumTop=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.04,12),sm(0x334433,.5,.4));
+  drumTop.position.set(-2,.62,2);grp.add(drumTop);
+  // 드럼통 2 (쓰러진 것)
+  const drum2=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.55,12),sm(0x664422,.6,.2));
+  drum2.position.set(-1.3,.28,1.5);drum2.rotation.z=Math.PI/2;drum2.castShadow=true;grp.add(drum2);
+  // 나무 상자들
+  const crateMat=sm(0x8a6030,.9);
+  grp.add(mkBox(.6,.6,.6,crateMat,2.5,.3,-3.5,true,true));
+  grp.add(mkBox(.6,.6,.6,crateMat,2.5,.9,-3.5,true,true));
+  grp.add(mkBox(.6,.6,.6,crateMat,3.2,.3,-3.5,true,true));
+  // 상자 테두리선
+  [0,1,2].forEach(i=>{
+    const s=mkBox(.62,.04,.62,sm(0x5a3010,.8),i<2?2.5:3.2,i===1?.6:.3,-3.5);grp.add(s);
+  });
+  // 사다리
+  const ladMat=sm(0x7a5020,.8);
+  grp.add(mkBox(.06,2.5,.06,ladMat,1.3,1.25,-4.8,true));
+  grp.add(mkBox(.06,2.5,.06,ladMat,1.7,1.25,-4.8,true));
+  [.3,.7,1.1,1.5,1.9].forEach(y=>grp.add(mkBox(.52,.04,.04,ladMat,1.5,y,-4.8)));
+  // 바닥 물웅덩이 (반사 효과)
+  const puddle=new THREE.Mesh(new THREE.CircleGeometry(.5,16),new THREE.MeshStandardMaterial({color:0x334455,metalness:.9,roughness:.1}));
+  puddle.rotation.x=-Math.PI/2;puddle.position.set(-1,.01,1);grp.add(puddle);
+  // 벽에 낙서/균열
+  const crack=mkBox(1.2,.04,.02,sm(0x222222,.9),-2,1.5,-4.49);grp.add(crack);
+  const crack2=mkBox(.04,.8,.02,sm(0x222222,.9),-1.5,1.1,-4.49);grp.add(crack2);
+  // 발전기 - 산업용 발전기 스타일
+  const genGrp=new THREE.Group();genGrp.position.set(-3.5,0,-1);
+  // 본체
+  genGrp.add(new THREE.Mesh(new THREE.BoxGeometry(1,.9,.75),sm(0x334433,.5,.3)));
+  // 상단 덮개 (살짝 둥글게)
+  genGrp.add(new THREE.Mesh(new THREE.BoxGeometry(1.05,.12,.8),sm(0x223322,.5,.3))).position.y=.51;
+  // 배기구 (오른쪽 면 격자)
+  for(let i=0;i<3;i++){
+    const vent=new THREE.Mesh(new THREE.BoxGeometry(.04,.5,.02),sm(0x111111,.8));
+    vent.position.set(.48,.05,-0.2+i*.2);genGrp.add(vent);
+  }
+  // 제어판 (앞면)
+  const ctrlPanel=new THREE.Mesh(new THREE.BoxGeometry(.5,.35,.02),sm(0x222222,.4,.2));
+  ctrlPanel.position.set(0,.15,.39);genGrp.add(ctrlPanel);
+  // 계기판 (파란 네모)
+  const gauge=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.01),new THREE.MeshStandardMaterial({color:0x001133,emissive:0x0022aa,emissiveIntensity:.5}));
+  gauge.position.set(-.1,.2,.4);genGrp.add(gauge);
+  // 시동 버튼 (빨간)
+  const startBtn=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.02,10),new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xaa1100,emissiveIntensity:.3}));
+  startBtn.rotation.x=Math.PI/2;startBtn.position.set(.15,.15,.4);genGrp.add(startBtn);
+  // 연료통 (옆에)
+  const tank=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.45,12),sm(0x554422,.6,.2));
+  tank.position.set(.62,.22,0);genGrp.add(tank);
+  const tankCap=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.04,8),sm(0x333322,.4,.3));
+  tankCap.position.set(.62,.47,0);genGrp.add(tankCap);
+  // 상태등
+  const gl=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),sm(0x330000,.3));
+  gl.position.set(-.15,.2,.4);genGrp.add(gl);
+  // 히트박스
+  const genHit=new THREE.Mesh(new THREE.BoxGeometry(1.2,.9,.75),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  genHit.userData={type:'generator',name:'비상 발전기',code:'5272',done:false};
+  genHit.userData.lightMesh=gl;
+  genGrp.add(genHit);
+  grp.add(genGrp);
+  const gen=genHit;
+  IA.push(genHit);
+  // 배터리
+  const bat=mkBox(.15,.3,.08,new THREE.MeshStandardMaterial({color:0x22aa44,metalness:.3,roughness:.6}),-3.5,.55,-.55,true);
+  bat.visible=false;bat.userData={type:'item',id:'battery',name:'배터리',collected:false};grp.add(bat);IA.push(bat);gen.userData.batMesh=bat;
+  // 문들
+  const door=mkDoor(grp,0,1.2,-5.45,{type:'door',name:'다음 방으로',target:2,locked:true,needsItem:'battery'});
+  const bdoor=mkDoor(grp,0,1.2,5.45,{type:'door',name:'이전 방으로',target:0,locked:false});
+  mkFrame(grp,0,-5.43);mkFrame(grp,0,5.43);IA.push(door,bdoor);
+  // 조명 - 매우 어둡게, 메모에만 스포트라이트
+  const pl=mkPL(grp,0,3.2,0,0xffddaa,0.08,15,true);
+  grp.add(new THREE.AmbientLight(0x000000,0.03));
+  // 메모 위 스포트라이트 (플레이어 시선 유도)
+  const noteSpot=new THREE.PointLight(0xfff5cc,1.5,3);
+  noteSpot.position.set(3.3,2.8,-3);grp.add(noteSpot);
+  const lights=[{pos:pl.position,col:new THREE.Color(1,.87,.67),int:.9}];
+  const walls=[
+    {n:new THREE.Vector3(1,0,0), col:new THREE.Color(.4,.27,.13),int:.7},
+    {n:new THREE.Vector3(-1,0,0),col:new THREE.Color(.4,.27,.13),int:.7},
+    {n:new THREE.Vector3(0,0,1), col:new THREE.Color(.2,.27,.33),int:.6},
+    {n:new THREE.Vector3(0,1,0), col:new THREE.Color(.3,.3,.3), int:.4},
+  ];
+  const gim=[];grp.traverse(c=>{if(c.isMesh&&c.receiveShadow)gim.push(c);});
+  // GI 퍼즐: 뒷벽에 발전기 코드 숫자 (GI ON시만 보임)
+  function makeGlowTex1(char){
+    const c=document.createElement('canvas');c.width=128;c.height=128;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#000';ctx.fillRect(0,0,128,128);
+    ctx.fillStyle='#fff';ctx.font='bold 96px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(char,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  // GI 퍼즐 방 2: GI OFF → 방이 매우 어두움, GI ON → 밝아지며 발전기 코드도 보임
+  const r1DarkAmbient=new THREE.AmbientLight(0x000000,0);
+  grp.add(r1DarkAmbient);
+  // 뒷벽에 발전기 코드 (GI ON시만 보임) - 파란 형광
+  const r1ClueMeshes=[];
+  ['5','2','7','2'].forEach((char,i)=>{
+    const mat=new THREE.MeshStandardMaterial({
+      color:0x000000,roughness:.9,
+      emissive:new THREE.Color(.1,.5,1),
+      emissiveMap:makeGlowTex1(char),
+      emissiveIntensity:2.0,transparent:true,opacity:1
+    });
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(.6,.6),mat);
+    m.position.set(-2.2+i*1.5,2.0,-5.38);
+    m.visible=false;
+    grp.add(m);r1ClueMeshes.push(m);
+  });
+  // 메모 힌트 업데이트
+  const wnMesh=IA.find(x=>x.userData.type==='note');
+  if(wnMesh) wnMesh.userData.body='[긴급 수리 지침]\n\n정전으로 지하실이 어둡다.\n아무것도 보이지 않는다...\n\n전역 조명(GI)을 활성화하면\n간접광으로 공간을 파악할 수 있다.\n\n발전기 코드는 뒷벽을 확인하라.';
+  return{grp,IA,lights,walls,gim,spawn:new THREE.Vector3(0,1.7,4.5),
+    ddgi:new DDGI(-4,.2,-5,8,3,10,4,3,4),
+    fog:[0x050308,.1,18],name:'방 2/3 — 지하실',r1DarkAmbient,r1ClueMeshes};
+}
+
+// ═══ 방 2: 보안실 ═══
+function buildR2(){
+  const grp=new THREE.Group();const IA=[];
+  mkWalls(grp,8,4,10,0x2a2a35,0x303040,0x1a2a3a,0x2a3a4a,0x2a3a4a,0x303040);
+  // 서버 랙
+  [[3,0,-3],[-3,0,-3],[3,0,0]].forEach(([px,,pz])=>{
+    grp.add(mkBox(.7,2.2,.5,sm(0x1a1a22,.5,.4),px,1.1,pz,true));
+    for(let i=0;i<5;i++){const led=new THREE.Mesh(new THREE.SphereGeometry(.04,6,6),sm(i%2===0?0x00ff44:0xffaa00,.2));led.position.set(px+.28,1+i*.3,pz-.23);grp.add(led);}
+  });
+  // 제어 패널 - SF 느낌으로
+  const panel=mkBox(1.8,1,.5,sm(0x111120,.3,.5),0,1.1,-3,true);
+  panel.userData={type:'panel',name:'보안 제어 패널',code:'4321',done:false};grp.add(panel);IA.push(panel);
+  // 패널 스크린 (파란 발광)
+  const pScreen=mkBox(1.2,.5,.04,new THREE.MeshStandardMaterial({color:0x001133,emissive:0x0055ff,emissiveIntensity:.9,roughness:.1}),0,1.45,-2.77);
+  grp.add(pScreen);
+  // 패널 버튼들
+  [[-0.4,0.85],[0,0.85],[0.4,0.85],[-0.4,1.1],[0,1.1],[0.4,1.1]].forEach(([bx,by])=>{
+    const btn=new THREE.Mesh(new THREE.BoxGeometry(.12,.08,.04),new THREE.MeshStandardMaterial({color:Math.random()>.5?0x00ff44:0xff2200,emissive:Math.random()>.5?0x00aa22:0xaa1100,emissiveIntensity:.8,roughness:.3}));
+    btn.position.set(bx,by,-2.76);grp.add(btn);
+  });
+  // 패널 테두리 발광선
+  const pFrame=mkBox(1.85,.04,.04,new THREE.MeshStandardMaterial({color:0x0044ff,emissive:0x0044ff,emissiveIntensity:1}),0,1.62,-2.77);
+  grp.add(pFrame);
+  const pFrame2=mkBox(1.85,.04,.04,new THREE.MeshStandardMaterial({color:0x0044ff,emissive:0x0044ff,emissiveIntensity:1}),0,1.18,-2.77);
+  grp.add(pFrame2);
+
+  // 보안 매뉴얼 - Canvas 텍스처 클립보드
+  const mnCvs=document.createElement('canvas');mnCvs.width=256;mnCvs.height=340;
+  const mctx=mnCvs.getContext('2d');
+  mctx.fillStyle='#ddeeff';mctx.fillRect(0,0,256,340);
+  // 클립 상단
+  mctx.fillStyle='#667788';mctx.fillRect(88,0,80,24);
+  mctx.fillStyle='#889aaa';mctx.fillRect(100,4,56,16);
+  // 제목 바
+  mctx.fillStyle='#1a3a5a';mctx.fillRect(0,24,256,36);
+  mctx.fillStyle='#ffffff';mctx.font='bold 18px sans-serif';mctx.textAlign='center';
+  mctx.fillText('SECURITY MANUAL',128,47);
+  // scribble 선들
+  mctx.strokeStyle='#223344';mctx.lineWidth=2;mctx.lineCap='round';mctx.textAlign='left';
+  [[20,80,200,79],[20,108,220,107],[20,136,180,135],[20,164,210,163],
+   [20,200,190,199],[20,228,215,227],[20,256,175,255],[20,284,200,283],[20,312,185,311]
+  ].forEach(([x1,y1,x2,y2])=>{
+    mctx.beginPath();const mx=(x1+x2)/2;mctx.moveTo(x1,y1);mctx.quadraticCurveTo(mx,y1-3,x2,y2);mctx.stroke();
+  });
+  const mnTex=new THREE.CanvasTexture(mnCvs);
+  const hnBg=new THREE.Mesh(new THREE.PlaneGeometry(.5,.65),new THREE.MeshStandardMaterial({map:mnTex,roughness:.8}));
+  hnBg.position.set(1.22,1.1,-2.77);grp.add(hnBg);
+  const hnLight=new THREE.PointLight(0x6688ff,.5,2.5);hnLight.position.set(1.2,2,-2.4);grp.add(hnLight);
+  const hn=mkBox(.5,.65,.05,new THREE.MeshStandardMaterial({transparent:true,opacity:0}),1.22,1.1,-2.77);
+  hn.userData={type:'note',name:'보안 매뉴얼',title:'보안 매뉴얼',body:'[비상 보안 코드]\n\n이 건물은 지하 1층, 지상 3층\n총 4개 층으로 구성되어 있다.\n\n비상 코드는 각 층 번호를\n역순으로 나열한 것:\n\n  4층 → 3층 → 2층 → 1층\n\n힌트: 맨 위층부터 차례로'};
+  grp.add(hn);IA.push(hn);
+  // 출구
+  const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(1.4,2.6,.15),sm(0x112233,.5,.3));
+  exitDoor.position.set(0,1.3,-4.93);exitDoor.castShadow=true;
+  exitDoor.userData={type:'exit',name:'탈출구',locked:true};grp.add(exitDoor);IA.push(exitDoor);
+  grp.add(mkBox(.8,.22,.05,sm(0x00aa44,.3),0,2.73,-4.91));
+  // 돌아가기
+  // ── 보안실 소품 ──
+  // 중앙 책상
+  grp.add(mkBox(2,.08,1,sm(0x1a1a2a,.5,.3),0,.75,1,true,true));
+  [[-1,.375,.55],[1,.375,.55],[-1,.375,1.45],[1,.375,1.45]].forEach(([x,y,z])=>grp.add(mkBox(.06,.7,.06,sm(0x111122,.6,.4),x,y,z,true)));
+  // 책상 위 모니터 2개
+  [-0.5,0.5].forEach(x=>{
+    grp.add(mkBox(.5,.35,.03,sm(0x0a0a1a,.3,.3),x,1.15,1,true));
+    grp.add(mkBox(.5,.35,.03,new THREE.MeshStandardMaterial({color:0x001133,emissive:0x0033aa,emissiveIntensity:.7}),x,1.15,.99));
+    grp.add(mkBox(.04,.25,.04,sm(0x111122,.4,.4),x,0.92,1.06,true));
+    grp.add(mkBox(.45,.04,.25,sm(0x111122,.4,.4),x,.82,1.1,true));
+  });
+  // 경보등 (빨간 점멸)
+  [-3.5,0,3.5].forEach(x=>{
+    const alarmBase=mkBox(.15,.15,.15,sm(0x222222,.4,.5),x,3.6,0);grp.add(alarmBase);
+    const alarmLight=new THREE.Mesh(new THREE.SphereGeometry(.08,8,8),
+      new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xff2200,emissiveIntensity:1.5}));
+    alarmLight.position.set(x,3.7,0);grp.add(alarmLight);
+    alarmLight.userData={isAlarm:true,phase:x}; // 점멸용
+  });
+  // 바닥 케이블 라인들
+  [[-2,0,-1,2,0,-1],[-2,0,0,0,0,-2],[0,0,2,2,0,0]].forEach(([x1,y1,z1,x2,y2,z2])=>{
+    const len=Math.hypot(x2-x1,z2-z1);
+    const cable=mkBox(len,.03,.04,sm(0x222222,.9),( x1+x2)/2,.01,(z1+z2)/2);
+    cable.rotation.y=Math.atan2(x2-x1,z2-z1);grp.add(cable);
+  });
+  // 경고 표시판 (벽에)
+  const warnSign=mkBox(.6,.3,.03,new THREE.MeshStandardMaterial({color:0xffcc00,emissive:0xffaa00,emissiveIntensity:.4}),0,2.5,-4.88);grp.add(warnSign);
+  const warnInner=mkBox(.5,.2,.03,new THREE.MeshStandardMaterial({color:0x000000,emissive:0x000000}),0,2.5,-4.86);grp.add(warnInner);
+  const pl=mkPL(grp,0,3.6,0,0xaaccff,1.4,18,true);
+  const pl2=mkPL(grp,0,3.5,-3,0x4466ff,.6,10,false);
+  grp.add(new THREE.AmbientLight(0x050810,.6));
+  const lights=[{pos:pl.position,col:new THREE.Color(.67,.8,1),int:1.4},{pos:pl2.position,col:new THREE.Color(.27,.4,1),int:.6}];
+  const walls=[
+    {n:new THREE.Vector3(1,0,0), col:new THREE.Color(.17,.23,.3),int:.8},
+    {n:new THREE.Vector3(-1,0,0),col:new THREE.Color(.17,.23,.3),int:.8},
+    {n:new THREE.Vector3(0,0,1), col:new THREE.Color(.1,.17,.23),int:.7},
+    {n:new THREE.Vector3(0,1,0), col:new THREE.Color(.17,.2,.23),int:.4},
+  ];
+  const gim=[];grp.traverse(c=>{if(c.isMesh&&c.receiveShadow)gim.push(c);});
+  // GI 퍼즐 방 3: 4개 숫자가 방 곳곳에 흩어져 있음 - GI ON시만 보임
+  // 각각 다른 벽/색으로 → 돌아다니며 찾아야 함
+  function makeGlowTex2(char){
+    const c=document.createElement('canvas');c.width=128;c.height=128;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#000';ctx.fillRect(0,0,128,128);
+    ctx.fillStyle='#fff';ctx.font='bold 96px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(char,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  const r2ClueMeshes=[];
+  const alwaysNums=[];
+  // 숫자 4 - 뒷벽 왼쪽 (빨강)
+  const n4=new THREE.Mesh(new THREE.PlaneGeometry(.65,.65),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color(1,.05,.05),emissiveMap:makeGlowTex2('4'),emissiveIntensity:2.2,transparent:true}));
+  n4.position.set(-2.5,2,-4.88);n4.visible=false;grp.add(n4);r2ClueMeshes.push(n4);
+  // 숫자 3 - 오른쪽 벽 (선명한 초록)
+  const n3=new THREE.Mesh(new THREE.PlaneGeometry(.65,.65),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color(0,1,0),emissiveMap:makeGlowTex2('3'),emissiveIntensity:2.2,transparent:true}));
+  n3.position.set(3.88,2,1);n3.rotation.y=-Math.PI/2;n3.visible=false;grp.add(n3);r2ClueMeshes.push(n3);
+  // 숫자 2 - 천장 (파랑)
+  const n2=new THREE.Mesh(new THREE.PlaneGeometry(.65,.65),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color(0,.3,1),emissiveMap:makeGlowTex2('2'),emissiveIntensity:2.2,transparent:true}));
+  n2.position.set(1.5,3.9,-1);n2.rotation.x=Math.PI/2;n2.visible=false;grp.add(n2);r2ClueMeshes.push(n2);
+  // 숫자 1 - 왼쪽 벽 (밝은 노랑)
+  const n1=new THREE.Mesh(new THREE.PlaneGeometry(.65,.65),new THREE.MeshStandardMaterial({color:0,emissive:new THREE.Color(1,1,0),emissiveMap:makeGlowTex2('1'),emissiveIntensity:2.2,transparent:true}));
+  n1.position.set(-3.88,2,2);n1.rotation.y=Math.PI/2;n1.visible=false;grp.add(n1);r2ClueMeshes.push(n1);
+
+  // 힌트 업데이트
+  const hnMesh=IA.find(x=>x.userData.type==='note');
+  if(hnMesh) hnMesh.userData.body='[비상 보안 코드 규칙]\n\n보안 코드는 4자리이다.\n\n각 숫자는 방 곳곳에\n형광으로 숨겨져 있다.\n\n조명(GI)을 켜야만 보인다.\n방을 돌아다니며 찾아라.\n\n빨강→초록→파랑→노랑 순서';
+  return{grp,IA,lights,walls,gim,spawn:new THREE.Vector3(0,1.7,4),
+    ddgi:new DDGI(-3.5,.2,-4.5,7,3.6,9,4,3,4),
+    fog:[0x020308,.1,22],name:'방 3/3 — 보안실',exitDoor,r2ClueMeshes,alwaysNums};
+}
+
+// ═══ 방 초기화 ═══
+const ROOMS=[buildR0(),buildR1(),buildR2()];
+ROOMS.forEach(r=>{scene.add(r.grp);r.grp.visible=false;});
+
+// ═══ 방 전환 ═══
+function goRoom(idx){
+  const fade=document.getElementById('fade');
+  fade.style.opacity='1';
+  fade.style.pointerEvents='auto';
+  // 방 이동시 GI 자동 꺼짐
+  G.gi=false;
+  const b=document.getElementById('gi-badge');
+  b.textContent='꺼짐';b.className='gi-badge gi-off';
+  setTimeout(()=>{
+    if(G.room>=0) ROOMS[G.room].grp.visible=false;
+    G.room=idx;
+    const r=ROOMS[idx];
+    r.grp.visible=true;
+    camera.position.copy(r.spawn);
+    YAW=0;PITCH=0;camera.rotation.set(0,0,0);
+    scene.fog=new THREE.Fog(...r.fog);
+    document.getElementById('room-ind').textContent=r.name;
+    r.ddgi.conv=0;
+    document.getElementById('pfill').style.width='0%';
+    if(pvM.length){pvM.forEach(m=>scene.remove(m));pvM=[];}
+    setTimeout(()=>{
+      fade.style.opacity='0';
+      fade.style.pointerEvents='none';
+      cv.requestPointerLock();
+    },100);
+  },500);
+}
+
+// ═══ 조작 ═══
+const KEYS={};let YAW=0,PITCH=0;
+document.addEventListener('keydown',e=>{KEYS[e.code]=true;if(G.started)onKey(e.code);});
+document.addEventListener('keyup',e=>{KEYS[e.code]=false;});
+cv.addEventListener('click',()=>{if(G.started)cv.requestPointerLock();});
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement!==cv)return;
+  YAW-=e.movementX*.002;PITCH-=e.movementY*.002;
+  PITCH=Math.max(-Math.PI/2.4,Math.min(Math.PI/2.4,PITCH));
+});
+function onKey(c){
+  if(c==='KeyG')toggleGI();
+  else if(c==='KeyE')tryInteract();
+  else if(c==='KeyP')togglePV();
+}
+const BOUNDS=[{w:10,d:12},{w:9,d:11},{w:8,d:10}];
+function movePlayer(dt){
+  const sp=4*dt,fwd=new THREE.Vector3();camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();
+  const rt=new THREE.Vector3().crossVectors(fwd,camera.up).normalize();
+  const mv=new THREE.Vector3();
+  if(KEYS['KeyW'])mv.addScaledVector(fwd,sp);if(KEYS['KeyS'])mv.addScaledVector(fwd,-sp);
+  if(KEYS['KeyA'])mv.addScaledVector(rt,-sp);if(KEYS['KeyD'])mv.addScaledVector(rt,sp);
+  const nx=camera.position.clone().add(mv),b=BOUNDS[G.room],M=.5;
+  nx.x=Math.max(-b.w/2+M,Math.min(b.w/2-M,nx.x));
+  nx.z=Math.max(-b.d/2+M,Math.min(b.d/2-M,nx.z));nx.y=1.7;
+  camera.position.copy(nx);
+  camera.rotation.order='YXZ';camera.rotation.y=YAW;camera.rotation.x=PITCH;
+}
+
+// ═══ GI ═══
+function toggleGI(){
+  G.gi=!G.gi;
+  const b=document.getElementById('gi-badge');
+  b.textContent=G.gi?'켜짐':'꺼짐';
+  b.className='gi-badge '+(G.gi?'gi-on':'gi-off');
+  // GI 켤 때 힌트 메시지
+  if(G.gi){
+    const hint=document.getElementById('hint');
+    const msgs=[
+      '빛이 켜졌다! 빨간 벽을 살펴봐라...',
+      '간접광이 퍼진다! 이제 주변을 탐색할 수 있다.',
+      '조명 활성화! 뒷벽의 나머지 코드가 보인다...'
+    ];
+    hint.textContent=msgs[G.room]||'';
+    hint.style.opacity='1';
+    setTimeout(()=>{hint.style.opacity='0';},3000);
+  }
+}
+function applyGI(){
+  const r=ROOMS[G.room];
+  r.gim.forEach(m=>{
+    if(!m.material||!m.material.emissive)return;
+    if(!G.gi){m.material.emissive.set(0,0,0);return;}
+    const n=new THREE.Vector3(0,1,0);
+    if(Math.abs(m.rotation.x)>.1)n.set(0,m.rotation.x>0?-1:1,0);
+    const irr=r.ddgi.sample(m.position,n),al=m.material.color||new THREE.Color(1,1,1);
+    m.material.emissive.setRGB(irr.r*al.r*.4,irr.g*al.g*.4,irr.b*al.b*.4);
+    m.material.emissiveIntensity=1;
+  });
+  // 방 1(지하실)은 자체 조명 제어, 나머지만 GI 토글
+  if(G.room!==1) r.grp.traverse(c=>{if(c.isLight&&c.type==='AmbientLight')c.intensity=G.gi?.12:.9;});
+
+  // GI 퍼즐: 각 방 GI 효과
+  if(G.room===0 && ROOMS[0].clueMeshes) ROOMS[0].clueMeshes.forEach(m=>{m.visible=G.gi;});
+  // 방 2: GI OFF시 극도로 어두움, ON시 간접광으로 밝아짐 (메모 스포트는 항상 켜짐)
+  if(G.room===1){
+    ROOMS[1].grp.traverse(c=>{
+      if(c.isLight&&c.type==='AmbientLight') c.intensity=G.gi?0.5:0.03;
+      if(c.isLight&&c.type==='PointLight'&&c.intensity!==1.5) c.intensity=G.gi?0.9:0.08;
+    });
+    if(ROOMS[1].r1ClueMeshes) ROOMS[1].r1ClueMeshes.forEach(m=>{m.visible=G.gi;});
+  }
+  // 방 3: GI ON시 뒤 두 자리 숫자 추가로 보임
+  if(G.room===2 && ROOMS[2].r2ClueMeshes){
+    ROOMS[2].r2ClueMeshes.forEach(m=>{m.visible=G.gi;});
+    if(ROOMS[2].alwaysNums) ROOMS[2].alwaysNums.forEach(m=>{m.visible=G.gi;});
+  }
+}
+
+// ═══ 상호작용 ═══
+const RC=new THREE.Raycaster();
+function getIA(){
+  // done된 safe는 raycast에서 제외
+  return ROOMS[G.room].IA.filter(m=>!(m.userData.type==='safe'&&m.userData.done));
+}
+function checkLookAt(){
+  const r=ROOMS[G.room];RC.setFromCamera(new THREE.Vector2(0,0),camera);
+  const hits=RC.intersectObjects(getIA(),true);
+  const hint=document.getElementById('hint');
+  if(hits.length&&hits[0].distance<3.8){
+    const d=hits[0].object.userData,t=d.type;
+    let txt='';
+    if(t==='note')txt='[E] '+d.name+' 읽기';
+    else if(t==='key'&&!d.collected)txt='[E] '+d.name+' 줍기';
+    else if(t==='item'&&!d.collected)txt='[E] '+d.name+' 줍기';
+    else if(t==='safe')txt=d.done?'[이미 열림]':'[E] '+d.name+' 열기';
+    else if(t==='fusebox')txt=d.done?'[수리 완료]':'[E] 퓨즈 박스 수리하기';
+    else if(t==='generator')txt=d.done?'[가동 중]':'[E] 발전기 조작하기';
+    else if(t==='panel')txt=d.done?'[보안 해제됨]':'[E] 보안 패널 조작하기';
+    else if(t==='door'||t==='exit')txt='[E] '+d.name;
+    hint.textContent=txt;hint.style.opacity=txt?'1':'0';
+  } else hint.style.opacity='0';
+}
+function tryInteract(){
+  const r=ROOMS[G.room];RC.setFromCamera(new THREE.Vector2(0,0),camera);
+  const hits=RC.intersectObjects(getIA(),true);
+  if(!hits.length||hits[0].distance>3.8)return;
+  const mesh=hits[0].object,d=mesh.userData;
+  document.exitPointerLock();
+  switch(d.type){
+    case 'note': openNote(d.title,d.body); break;
+    case 'key':
+      if(!d.collected){d.collected=true;const kg=mesh.parent;if(kg&&kg.isGroup)kg.visible=false;else mesh.visible=false;addInv(d.id,'🔑',d.name);showMsg('황금 열쇠 획득!','열쇠를 주웠습니다.\n이제 출구 문을 열 수 있습니다!');}
+      break;
+    case 'item':
+      if(!d.collected){
+        d.collected=true;
+        // 부모 그룹 전체 숨기기 (fuseGrp 등)
+        const pg=mesh.parent;
+        if(pg&&pg.isGroup&&pg.userData.type==='item') pg.visible=false;
+        else mesh.visible=false;
+        addInv(d.id,d.id==='fuse'?'⚡':d.id==='battery'?'🔋':'📦',d.name);
+        showMsg('획득!',d.name+' 을 주웠습니다.');
+      }
+      break;
+    case 'safe':
+      if(!d.done)openCode('보안 금고 암호',d.code,()=>{
+        d.done=true;
+        // 금고 문 애니메이션
+        const sDoor=ROOMS[0].safeDoor;
+        ROOMS[0].keyGrp.visible=true;
+        showMsg('금고 열림! 🔓',
+          '금고가 열렸습니다!\n안에 황금 열쇠가 있습니다.\n\n' +
+          '━━━━━━━━━━━━━━━\n' +
+          '[DDGI 분석 결과]\n' +
+          '암호 826의 의미:\n\n' +
+          '  빨간 벽 간접광 반사값 → 8\n' +
+          '  초록 벽 간접광 반사값 → 2\n' +
+          '  파란 벽 간접광 반사값 → 6\n\n' +
+          'DDGI 프로브가 각 벽면의\n' +
+          '구면조화함수(SH)를 계산해\n' +
+          '간접광 세기를 측정한 결과입니다.\n' +
+          '━━━━━━━━━━━━━━━',
+          [{txt:'확인', fn:()=>{
+            document.getElementById('msg').style.display='none';
+            // 메시지 닫힌 후 문 열기
+            if(sDoor){
+              let t=0;
+              const anim=setInterval(()=>{
+                t=Math.min(t+0.025,1);
+                sDoor.rotation.y=-(t*Math.PI/2);
+                if(t>=1) clearInterval(anim);
+              },16);
+            }
+            cv.requestPointerLock();
+          }}]);
+      });
+      else if(ROOMS[0].keyGrp && !ROOMS[0].keyGrp.visible) showMsg('이미 열린 금고','금고는 이미 열려있습니다.');
+      // 열쇠가 보이면 아무것도 안 함 (열쇠 hitbox가 감지되게 냅두기)
+      break;
+    case 'fusebox':
+      if(!d.done){if(G.inv.includes('fuse')){d.done=true;showMsg('수리 완료!','퓨즈를 교체했습니다.\n이제 발전기를 가동할 수 있습니다.');}else showMsg('퓨즈 없음','교체할 퓨즈가 없습니다.');}
+      break;
+    case 'generator':
+      if(!d.done){const fb=ROOMS[1].IA.find(x=>x.userData.type==='fusebox');if(!fb||!fb.userData.done){showMsg('고장!','퓨즈가 없어 작동하지 않습니다.');break;}openCode('발전기 가동 코드',d.code,()=>{d.done=true;d.lightMesh.material.color.set(0x00ff44);d.batMesh.visible=true;showMsg('발전기 가동!','비상 발전기가 켜졌습니다!\n배터리를 수거하세요.');});}
+      break;
+    case 'panel':
+      if(!d.done)openCode('보안 패널 암호',d.code,()=>{d.done=true;ROOMS[2].exitDoor.userData.locked=false;showMsg('보안 해제!','출구 잠금이 해제되었습니다!');});
+      break;
+    case 'door':
+      if(d.locked){if(d.needsItem&&G.inv.includes(d.needsItem))goRoom(d.target);else showMsg('잠겨있음','필요한 아이템이 없습니다.');}
+      else goRoom(d.target);break;
+    case 'exit':
+      if(d.locked)showMsg('잠겨있음','보안 패널을 해제해야 합니다.');
+      else showEndScreen();
+      break;
+  }
+}
+
+// ═══ 인벤토리 ═══
+function addInv(id,emoji,name){
+  G.inv.push(id);
+  const i=G.inv.length-1;
+  const slot=document.getElementById('sl'+i);
+  if(slot){
+    document.getElementById('sl'+i+'-icon').textContent=emoji;
+    document.getElementById('sl'+i+'-label').textContent=name;
+    slot.classList.add('on');
+  }
+}
+
+// ═══ 패널 ═══
+let cAns='',cIn='',cCb=null;
+function openCode(title,ans,cb){cAns=ans;cIn='';cCb=cb;document.getElementById('code-t').textContent=title;document.getElementById('code-disp').textContent=('_ '.repeat(ans.length)).trim();document.getElementById('code-fb').textContent='';document.getElementById('code-panel').style.display='block';}
+function closeCode(){document.getElementById('code-panel').style.display='none';cv.requestPointerLock();}
+function pn(n){
+  if(n==='C'){cIn='';document.getElementById('code-disp').textContent=('_ '.repeat(cAns.length)).trim();document.getElementById('code-fb').textContent='';return;}
+  if(n==='OK'){
+    if(cIn===cAns){document.getElementById('code-fb').style.color='#8f8';document.getElementById('code-fb').textContent='정답!';setTimeout(()=>{closeCode();cCb&&cCb();},600);}
+    else{document.getElementById('code-fb').style.color='#f88';document.getElementById('code-fb').textContent='틀렸습니다';cIn='';setTimeout(()=>{document.getElementById('code-disp').textContent=('_ '.repeat(cAns.length)).trim();document.getElementById('code-fb').textContent='';},800);}
+    return;
+  }
+  if(cIn.length<cAns.length){cIn+=n;const d=cIn.split('').join(' '),rem=cAns.length-cIn.length;document.getElementById('code-disp').textContent=d+(rem>0?' '+('_ '.repeat(rem)).trim():'');}
+}
+function openNote(t,b){document.getElementById('note-t').textContent=t;document.getElementById('note-b').textContent=b;document.getElementById('note-panel').style.display='block';}
+function closeNote(){document.getElementById('note-panel').style.display='none';cv.requestPointerLock();}
+function showMsg(title,body,buttons){
+  document.getElementById('msg-t').textContent=title;
+  document.getElementById('msg-b').textContent=body;
+  const btns=document.getElementById('msg-btns');btns.innerHTML='';
+  const defs=buttons||[{txt:'확인',fn:()=>{document.getElementById('msg').style.display='none';cv.requestPointerLock();}}];
+  defs.forEach(({txt,fn,sec})=>{const b=document.createElement('button');b.className='btn'+(sec?' btn-sec':'');b.textContent=txt;b.onclick=fn;btns.appendChild(b);});
+  document.getElementById('msg').style.display='block';
+}
+
+// ═══ 미니맵 ═══
+const mmCtx=document.getElementById('mm').getContext('2d');
+function drawMinimap(){
+  const W=160,H=110,b=BOUNDS[G.room],sx=W/b.w,sz=H/b.d;
+  mmCtx.clearRect(0,0,W,H);
+  mmCtx.fillStyle='#1a1a2a';mmCtx.fillRect(0,0,W,H);
+  mmCtx.fillStyle='#252535';mmCtx.fillRect(2,2,W-4,H-4);
+  mmCtx.strokeStyle='rgba(255,255,255,0.4)';mmCtx.lineWidth=1.5;mmCtx.strokeRect(1,1,W-2,H-2);
+  mmCtx.fillStyle='rgba(0,255,100,0.8)';mmCtx.fillRect(W/2-6,0,12,4);
+  mmCtx.fillStyle='rgba(255,255,255,0.35)';mmCtx.font='9px sans-serif';mmCtx.textAlign='left';
+  mmCtx.fillText(['연구실','지하실','보안실'][G.room],5,13);
+  const px=(camera.position.x+b.w/2)*sx,pz=(camera.position.z+b.d/2)*sz;
+  const fx=Math.sin(YAW)*12,fz=Math.cos(YAW)*12;
+  mmCtx.strokeStyle='rgba(224,201,127,0.4)';mmCtx.lineWidth=1;
+  mmCtx.beginPath();mmCtx.moveTo(px,pz);mmCtx.lineTo(px-fx,pz+fz);mmCtx.stroke();
+  mmCtx.fillStyle='#e0c97f';mmCtx.beginPath();mmCtx.arc(px,pz,5,0,Math.PI*2);mmCtx.fill();
+  mmCtx.strokeStyle='#fff';mmCtx.lineWidth=1.5;mmCtx.beginPath();mmCtx.arc(px,pz,5,0,Math.PI*2);mmCtx.stroke();
+}
+
+// ═══ 프로브 시각화 ═══
+let pvM=[];
+function togglePV(){
+  if(pvM.length){pvM.forEach(m=>scene.remove(m));pvM=[];return;}
+  ROOMS[G.room].ddgi.probes.forEach(p=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.05,6,6),new THREE.MeshBasicMaterial({color:0x4488ff}));m.position.copy(p.pos);scene.add(m);pvM.push(m);});
+}
+
+// ═══ 게임 시작 ═══
+function showEndScreen(){
+  document.exitPointerLock();
+  const fade=document.getElementById('fade');
+  fade.style.opacity='1';fade.style.pointerEvents='auto';
+  setTimeout(()=>{
+    const end=document.getElementById('end-screen');
+    end.style.display='flex';
+    setTimeout(()=>{fade.style.opacity='0';fade.style.pointerEvents='none';},300);
+  },800);
+}
+function startGame(){
+  document.getElementById('start').style.display='none';
+  G.started=true;
+  G.room=0;
+  const r=ROOMS[0];
+  r.grp.visible=true;
+  camera.position.copy(r.spawn);
+  YAW=0;PITCH=0;camera.rotation.set(0,0,0);
+  scene.fog=new THREE.Fog(...r.fog);
+  document.getElementById('room-ind').textContent=r.name;
+  r.ddgi.conv=0;
+  cv.requestPointerLock();
+}
+
+// ═══ 렌더 루프 ═══
+let last=performance.now();
+function animate(){
+  requestAnimationFrame(animate);
+  const now=performance.now(),dt=Math.min((now-last)/1000,.05);last=now;
+  if(!G.started){renderer.render(scene,camera);return;}
+  movePlayer(dt);checkLookAt();drawMinimap();
+  const r=ROOMS[G.room];
+  r.ddgi.update(r.lights,r.walls);
+  applyGI();
+  // 보안실 경보등 점멸
+  if(G.room===2){
+    ROOMS[2].grp.traverse(c=>{
+      if(c.isMesh&&c.userData.isAlarm){
+        const blink=Math.sin(now*.003+c.userData.phase)>.3?1.5:0;
+        c.material.emissiveIntensity=blink;
+      }
+    });
+  }
+  renderer.render(scene,camera);
+}
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+animate();
+</script>
+</body>
+</html>
