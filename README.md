@@ -162,7 +162,7 @@ sample(pos, normal) {
 
 | GI OFF | GI ON |
 |---|---|
-| ![GI OFF](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A91%EC%97%B0%EA%B5%AC%EC%8B%A4%20GI%20OFF%20.png) | ![GI ON](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A91%20%EC%97%B0%EA%B5%AC%EC%8B%A4%20GI%20ON.png) |
+| ![GI OFF](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A91%EC%97%B0%EA%B5%AC%EC%8B%A4%20GI%20%20OFF%20.png) | ![GI ON](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A91%20%EC%97%B0%EA%B5%AC%EC%8B%A4%20GI%20ON.png) |
 
 GI ON 상태에서 초록 벽의 빛이 바닥과 천장에 초록빛으로 번지고, 빨간 벽의 빛이 인접 면에 붉게 번지는 **Color Bleeding** 효과가 나타난다.
 
