@@ -74,9 +74,11 @@ new DDGI(
 )
 ```
 
-**P키로 프로브 격자 시각화:**
+**P키로 프로브 격자 시각화 (파란 점 = 각 프로브 위치):**
 
 ![프로브 시각화](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%ED%94%84%EB%A1%9C%EB%B8%8C.png)
+
+*공간에 4×3×4 = 48개의 프로브가 격자 형태로 배치되어 있다. 각 프로브는 주변의 빛 정보를 구면조화함수(SH)로 저장하며, 렌더링 시 인접 8개 프로브의 값을 보간하여 임의 위치의 간접광을 계산한다.*
 
 #### 구면조화함수 (Spherical Harmonics)
 
