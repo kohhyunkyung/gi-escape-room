@@ -205,7 +205,7 @@ GI를 활성화하면 빨간 벽에 숫자 **8, 2, 6**이 나타난다.
 
 | GI OFF | GI ON |
 |---|---|
-| ![GI OFF](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A92%20%EC%A7%80%ED%95%98%EC%8B%A4%20GI%20OFF.png) | ![GI ON](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A92%20%EC%A7%80%ED%95%98%EC%8B%A4%20GI%20ON.png) |
+| ![GI OFF](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A92%20%EC%A7%80%ED%95%98%EC%8B%A4%20%20GI%20OFF.png) | ![GI ON](https://raw.githubusercontent.com/kohhyunkyung/gi-escape-room/main/escape%20room/%EB%B0%A92%20%EC%A7%80%ED%95%98%EC%8B%A4%20GI%20ON.png) |
 
 GI ON 시 DDGI 프로브의 간접광 계산으로 방 전체가 밝아지며, 뒷벽에 발전기 코드 **5272**가 파란 형광으로 나타난다.
 
